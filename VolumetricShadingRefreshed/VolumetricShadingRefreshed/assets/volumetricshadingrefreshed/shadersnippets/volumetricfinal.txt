@@ -1,7 +1,2 @@
 #if GODRAYS > 0
-vec4 grc = texture(godrayParts, refractedUV);
-float maxComp = max(max(grc.r, grc.g), grc.b);
-if (maxComp > 0.005) {
-    color.rgb = min(color.rgb + grc.rgb * 0.65, vec3(1));
-    color.a=1;
-}
+// Disabled until the sky/cloud glow mask is separated from the volumetric buffer.

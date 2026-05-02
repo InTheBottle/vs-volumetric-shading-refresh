@@ -176,38 +176,6 @@
     #endif
 
 - type: token
-  filename: clouds.fsh
-  tokens: col.rgb *= max(1, 0.9 + skyGlow.a/10);
-  content: |
-    col.rgb *= max(1, 0.9 + skyGlow.a/10);
-    float cloudDensity = clamp(col.a, 0.0, 1.0);
-    float cloudPowder = 1.0 - exp(-4.0 * cloudDensity);
-    float cloudSun = pow(clamp(dot(normalize(vertexPos + vec3(0.0, 100.0, 0.0)), normalize(sunPosition)) * 0.5 + 0.5, 0.0, 1.0), 3.0);
-    float cloudTransmittance = exp(-1.35 * cloudDensity);
-    col.rgb *= 0.92 + 0.08 * cloudTransmittance;
-    col.rgb += skyGlow.rgb * cloudPowder * cloudSun * (0.03 + 0.08 * dayLight);
-
-- type: token
-  filename: clouds.fsh
-  tokens: outGlow = vec4(max(0, skyGlow.a/10 + baseBloom), 0
-  content: |
-    outGlow = vec4(max(0, skyGlow.a/10 + baseBloom), 0
-
-- type: start
-  filename: clouds.vsh
-  snippet: volumetriclightposition.txt
-
-- type: token
-  filename: clouds.vsh
-  tokens: rgbaCloud.a = alpha * clamp(rgbaCloud.a, 0, 1);
-  content: |
-    rgbaCloud.a = alpha * clamp(rgbaCloud.a, 0, 1);
-    #if GODRAYS > 0
-    prepareVolumetricLightingFlat(lightPosition);
-    #endif
-    calcShadowMapCoords(modelViewMatrix, vec4(vexPos, 1.0));
-
-- type: token
   filename: entityanimated.fsh
   tokens: "#if USEOIT == 0 && SSAOLEVEL > 0 outGPosition ="
   content: |
