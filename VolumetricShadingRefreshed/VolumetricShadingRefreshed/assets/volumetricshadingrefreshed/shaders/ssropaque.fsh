@@ -20,6 +20,10 @@ layout(location = 3) out vec4 outRefraction;
 #include vertexflagbits.ash
 #include colormap.fsh
 
+vec3 safeNormalize(vec3 value, vec3 fallback) {
+    float len2 = dot(value, value);
+    return len2 > 0.000001 ? value * inversesqrt(len2) : fallback;
+}
 
 void main()
 {
@@ -29,7 +33,7 @@ void main()
     if (color.a < 0.5) discard;
 
     outGPosition = vec4(fragPosition.xyz, 0);
-    outGNormal = vec4(normalize(gnormal.xyz), playerUnderwater);
+    outGNormal = vec4(safeNormalize(gnormal.xyz, vec3(0.0, 1.0, 0.0)), playerUnderwater);
     color = vec4(pow(color.rgb, vec3(2.2)), 1.0);
     outTint = vec4(getColorMapped(terrainTexLinear, color).rgb, 0);
     #if VSMOD_REFRACT > 0

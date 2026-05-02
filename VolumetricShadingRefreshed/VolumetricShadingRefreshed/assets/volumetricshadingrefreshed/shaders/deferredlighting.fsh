@@ -38,17 +38,19 @@ void main(void)
     if (projectedZ < 1.0) {
         vec4 screenPosition = vec4(vec3(texcoord, projectedZ) * 2.0 - 1.0, 1.0);
         screenPosition = invProjectionMatrix * screenPosition;
-        screenPosition.xyz /= screenPosition.w;
-        screenPosition.w = 1.0;
-        vec4 worldPosition = invModelViewMatrix * screenPosition;
-        vec4 cameraWorldPos = invModelViewMatrix * vec4(0, 0, 0, 1);
-        vec4 worldNormal = invModelViewMatrix * vec4(normal.xyz, 0);
+        if (abs(screenPosition.w) > 0.000001) {
+            screenPosition.xyz /= screenPosition.w;
+            screenPosition.w = 1.0;
+            vec4 worldPosition = invModelViewMatrix * screenPosition;
+            vec4 cameraWorldPos = invModelViewMatrix * vec4(0, 0, 0, 1);
+            vec4 worldNormal = invModelViewMatrix * vec4(normal.xyz, 0);
 
-        float fog = getFogLevelDeferred(length(screenPosition), fogMinIn, fogDensityIn, worldPosition.y);
-        color = applyOverexposedFogAndShadowDeferred(worldPosition, color, fog, worldNormal.xyz,
-        1, intensity, fogDensityIn, glowVec.b, glowVec.r);
+            float fog = getFogLevelDeferred(length(screenPosition), fogMinIn, fogDensityIn, worldPosition.y);
+            color = applyOverexposedFogAndShadowDeferred(worldPosition, color, fog, worldNormal.xyz,
+            1, intensity, fogDensityIn, glowVec.b, glowVec.r);
 
-        glowVec.y = calculateVolumetricScatterDeferred(worldPosition, cameraWorldPos);
+            glowVec.y = calculateVolumetricScatterDeferred(worldPosition, cameraWorldPos);
+        }
     }
 
     glowVec.z = 0.0;

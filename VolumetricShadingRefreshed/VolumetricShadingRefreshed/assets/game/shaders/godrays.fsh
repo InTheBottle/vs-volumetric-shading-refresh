@@ -17,6 +17,11 @@ out vec4 outColor;
 
 #include printvalues.fsh
 
+vec3 safeNormalize(vec3 value, vec3 fallback) {
+    float len2 = dot(value, value);
+    return len2 > 0.000001 ? value * inversesqrt(len2) : fallback;
+}
+
 vec4 applyVolumetricLighting(in vec3 color, in vec2 uv, float intensity) {
     vec2 texelSize = 1.0 / textureSize(glowParts, 0);
     float vgr =
@@ -38,11 +43,16 @@ vec4 applyVolumetricLighting(in vec3 color, in vec2 uv, float intensity) {
 
 void main(void) {
     vec4 proCoord = invProjectionMatrix * vec4(texCoord * 2.0 - 1.0, -1.0, 1);
+    if (abs(proCoord.w) < 0.000001) {
+        outColor = vec4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
     proCoord.xyz /= proCoord.w;
     proCoord.w = 0;
     proCoord = invModelViewMatrix * proCoord;
 
-    float dp = dot(normalize(sunPos3dIn), normalize(proCoord.xyz));
+    float dp = dot(safeNormalize(sunPos3dIn, vec3(0.0, 1.0, 0.0)), safeNormalize(proCoord.xyz, vec3(0.0, 0.0, -1.0)));
     vec3 useColor = mix(backColor, frontColor, dp * 0.5 + 0.5);
     outColor = applyVolumetricLighting(useColor, texCoord, VOLUMETRIC_INTENSITY);
 }

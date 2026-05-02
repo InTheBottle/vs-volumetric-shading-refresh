@@ -22,6 +22,11 @@ layout(location = 3) out vec4 outRefraction;
 #include colormap.fsh
 #include noise3d.ash
 
+vec3 safeNormalize(vec3 value, vec3 fallback) {
+    float len2 = dot(value, value);
+    return len2 > 0.000001 ? value * inversesqrt(len2) : fallback;
+}
+
 void main()
 {
     if ((renderFlags & ReflectiveBitMask) == 0) discard;
@@ -37,9 +42,11 @@ void main()
     }
 
     outGPosition = vec4(gposition.xyz, 0);
-    outGNormal = vec4(normalize(gnormal.xyz + vec3(noise)), playerUnderwater);
+    outGNormal = vec4(safeNormalize(gnormal.xyz + vec3(noise), vec3(0.0, 1.0, 0.0)), playerUnderwater);
     outTint = vec4(color.xyz, 0);
     #if VSMOD_REFRACT > 0
-    outRefraction = vec4(vec2(noise * refractionMultiplier / gposition.z), 0, 0);
+    float refractionDepth = sign(gposition.z) * max(abs(gposition.z), 0.05);
+    vec2 refractionOffset = clamp(vec2(noise * refractionMultiplier / refractionDepth), vec2(-0.05), vec2(0.05));
+    outRefraction = vec4(refractionOffset, 0, 0);
     #endif
 }

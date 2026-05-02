@@ -26,9 +26,7 @@ out vec4 outColor;
 #include skycolor.fsh
 #include deferredfogandlight.fsh
 
-float comp = 1.0-zNear/zFar/zFar;
-
-const int maxf = 7;//number of refinements
+const int maxf = 6;//number of refinements
 const float ref = 0.11;//refinement multiplier
 const float inc = 3.0;//increasement factor at each step
 
@@ -41,6 +39,10 @@ vec4 nvec4(vec3 pos) {
 float cdist(vec2 coord) {
     return max(abs(coord.s-0.5), abs(coord.t-0.5))*2.0;
 }
+vec3 safeNormalize(vec3 value, vec3 fallback) {
+    float len2 = dot(value, value);
+    return len2 > 0.000001 ? value * inversesqrt(len2) : fallback;
+}
 
 vec4 raytrace(vec3 fragpos, vec3 rvector) {
     vec4 color = vec4(0.0);
@@ -51,10 +53,9 @@ vec4 raytrace(vec3 fragpos, vec3 rvector) {
     int sr = 0;
 
     bool hit = false;
-    vec3 hitFragpos0 = vec3(0);
     vec3 hitPos = vec3(0);
 
-    for (int i = 0; i < 25; ++i) {
+    for (int i = 0; i < 20; ++i) {
         vec3 pos = nvec3(projectionMatrix * nvec4(fragpos)) * 0.5 + 0.5;
         if (pos.x < 0 || pos.x > 1 || pos.y < 0 || pos.y > 1 || pos.z < 0 || pos.z > 1.0) break;
         vec3 fragpos0 = vec3(pos.st, texture(gDepth, pos.st).r);
@@ -63,7 +64,6 @@ vec4 raytrace(vec3 fragpos, vec3 rvector) {
         bool isFurther = fragpos0.z < start.z;
         if (err < pow(length(rvector), 1.175) && isFurther) {
             hit = true;
-            hitFragpos0 = fragpos0;
             hitPos = pos;
             sr++;
 
@@ -89,14 +89,18 @@ vec4 raytrace(vec3 fragpos, vec3 rvector) {
 
 void main(void) {
     vec4 positionFrom = texture(gPosition, texcoord);
-    vec3 unitPositionFrom = normalize(positionFrom.xyz);
-    vec3 normal = normalize(texture(gNormal, texcoord).xyz);
-    vec3 pivot = normalize(reflect(unitPositionFrom, normal));
-
     outColor = vec4(0);
 
     if (positionFrom.w < 1.0) {
         vec3 positionFromUV = nvec3(projectionMatrix * positionFrom) * 0.5 + 0.5;
+        if (positionFromUV.x < 0.0 || positionFromUV.x > 1.0 || positionFromUV.y < 0.0 || positionFromUV.y > 1.0) {
+            return;
+        }
+
+        vec3 unitPositionFrom = safeNormalize(positionFrom.xyz, vec3(0.0, 0.0, -1.0));
+        vec3 normal = safeNormalize(texture(gNormal, texcoord).xyz, vec3(0.0, 1.0, 0.0));
+        vec3 pivot = safeNormalize(reflect(unitPositionFrom, normal), normal);
+
         vec3 positionFromDepth = vec3(positionFromUV.xy, texture(gDepth, positionFromUV.xy).r);
         positionFromDepth = nvec3(invProjectionMatrix * nvec4(positionFromDepth * 2.0 - 1.0));
 

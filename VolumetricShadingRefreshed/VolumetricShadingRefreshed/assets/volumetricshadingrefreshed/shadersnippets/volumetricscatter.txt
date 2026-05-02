@@ -11,7 +11,7 @@ float vsmodVolumetricPhase(float cosTheta) {
 
 float vsmodVolumetricResponse(float scattered, float phase) {
     float shaped = clamp(scattered * phase * 0.58, 0.0, 1.0);
-    float flatness = clamp(VOLUMETRIC_FLATNESS / 120.0, 0.45, 2.0);
+    float flatness = clamp(VOLUMETRIC_FLATNESS, 0.45, 2.0);
     return min(0.55f, pow(shaped, flatness) * 0.72);
 }
 
@@ -56,7 +56,8 @@ float calculateVolumetricScatter(vec3 position) {
     }
 
     float normalOut = clamp(scattered * 2.4, 0.0, 1.0);
-    float intensity = dot(dV / rayStepLength, normalize(shadowLightPos.xyz));
+    float shadowLightLen = max(length(shadowLightPos.xyz), 0.00001);
+    float intensity = dot(dV / rayStepLength, shadowLightPos.xyz / shadowLightLen);
     float phase = vsmodVolumetricPhase(intensity);
     return vsmodVolumetricResponse(normalOut, phase);
     #endif

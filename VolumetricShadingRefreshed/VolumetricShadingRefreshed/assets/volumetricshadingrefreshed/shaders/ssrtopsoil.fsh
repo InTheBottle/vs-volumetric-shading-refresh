@@ -22,6 +22,11 @@ layout(location = 3) out vec4 outRefraction;
 
 #include noise3d.ash
 
+vec3 safeNormalize(vec3 value, vec3 fallback) {
+    float len2 = dot(value, value);
+    return len2 > 0.000001 ? value * inversesqrt(len2) : fallback;
+}
+
 void main()
 {
     vec4 color = texture(terrainTex, uv);
@@ -39,7 +44,7 @@ void main()
     normal += vec3(noise * 0.05);
 
     outGPosition = vec4(fragPosition.xyz, alpha);
-    outGNormal = vec4(normalize(normal), playerUnderwater);
+    outGNormal = vec4(safeNormalize(normal, vec3(0.0, 1.0, 0.0)), playerUnderwater);
     outTint = vec4(vec3(1.0), 0);
     #if VSMOD_REFRACT > 0
     outRefraction = vec4(0, 0, 0, 1);

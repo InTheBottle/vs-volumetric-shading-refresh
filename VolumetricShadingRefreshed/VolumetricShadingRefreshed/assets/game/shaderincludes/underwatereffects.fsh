@@ -8,9 +8,13 @@ float getSkyMurkiness() {
         return 0.0;
     }
 
-    float ldepth1 = linearDepth(texture(liquidDepth, gl_FragCoord.xy / frameSize.xy).r);
-    float ldepth2 = linearDepth(texture(liquidDepth, (gl_FragCoord.xy + vec2(0, 3)) / frameSize.xy).r);
-    float ldepth3 = linearDepth(texture(liquidDepth, (gl_FragCoord.xy + vec2(0, 6)) / frameSize.xy).r);
+    vec2 uv0 = clamp(gl_FragCoord.xy / frameSize.xy, vec2(0.0), vec2(1.0));
+    vec2 uv1 = clamp((gl_FragCoord.xy + vec2(0, 3)) / frameSize.xy, vec2(0.0), vec2(1.0));
+    vec2 uv2 = clamp((gl_FragCoord.xy + vec2(0, 6)) / frameSize.xy, vec2(0.0), vec2(1.0));
+
+    float ldepth1 = linearDepth(texture(liquidDepth, uv0).r);
+    float ldepth2 = linearDepth(texture(liquidDepth, uv1).r);
+    float ldepth3 = linearDepth(texture(liquidDepth, uv2).r);
 
     return 1.0 - (ldepth1 + ldepth2 + ldepth3) / 3.0;
 }
@@ -20,19 +24,16 @@ float getUnderwaterMurkiness() {
         return 0.0;
     }
 
-    float ldepth = linearDepth(
-        max(
-            texture(liquidDepth, gl_FragCoord.xy / frameSize.xy).r,
-            texture(liquidDepth, (gl_FragCoord.xy + vec2(0, 3)) / frameSize.xy).r
-        )
-    );
+    vec2 uv0 = clamp(gl_FragCoord.xy / frameSize.xy, vec2(0.0), vec2(1.0));
+    vec2 uv1 = clamp((gl_FragCoord.xy + vec2(0, 3)) / frameSize.xy, vec2(0.0), vec2(1.0));
+    float ldepth = linearDepth(max(texture(liquidDepth, uv0).r, texture(liquidDepth, uv1).r));
 
     float fdepth = linearDepth(gl_FragCoord.z);
     return clamp(max(0.0, fdepth - ldepth) * 350.0, 0.0, 1.0);
 }
 
 vec3 applyUnderwaterEffects(vec3 color, float murkiness) {
-    float opticalDepth = max(0.0, murkiness);
+    float opticalDepth = clamp(murkiness, 0.0, 1.0);
     vec3 absorption = vec3(1.55, 0.68, 0.28);
     vec3 transmittance = exp(-absorption * opticalDepth);
 

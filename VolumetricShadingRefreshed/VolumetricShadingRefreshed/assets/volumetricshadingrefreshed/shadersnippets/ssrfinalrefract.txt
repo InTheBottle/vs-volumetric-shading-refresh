@@ -3,6 +3,10 @@ vec2 refractUV()
     #if VSMOD_SSR > 0 && VSMOD_REFRACT > 0
     vec4 startVPos = vec4(texture(gpositionScene, texCoord).xyz, 1);
     vec4 startPos = projectionMatrix * startVPos;
+    if (abs(startPos.w) < 0.000001) {
+        return texCoord;
+    }
+
     startPos.xyz /= startPos.w;
 
     float startPosDepth = startPos.z;
@@ -11,9 +15,10 @@ vec2 refractUV()
 
     vec4 bumpTex = texture(refractionScene, texCoord);      // displace texture coordinates
     vec2 bumpOffset = bumpTex.xy * 0.25 * (1.0 - bumpTex.w);
-    vec4 targetBump = texture(refractionScene, texCoord + bumpOffset);
+    vec2 targetUV = clamp(texCoord + bumpOffset, vec2(0.001), vec2(0.999));
+    vec4 targetBump = texture(refractionScene, targetUV);
 
-    vec2 refractedUV = texCoord + bumpOffset * (1.0 - targetBump.w);      // fetch refraction map
+    vec2 refractedUV = clamp(texCoord + bumpOffset * (1.0 - targetBump.w), vec2(0.001), vec2(0.999));      // fetch refraction map
 
     float endDepth = texture(gdepthScene, refractedUV).r;
 

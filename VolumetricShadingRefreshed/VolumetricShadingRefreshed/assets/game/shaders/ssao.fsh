@@ -23,6 +23,11 @@ float bias = 0.01;
 
 uniform mat4 projection;
 
+vec3 safeNormalize(vec3 value, vec3 fallback) {
+    float len2 = dot(value, value);
+    return len2 > 0.000001 ? value * inversesqrt(len2) : fallback;
+}
+
 #if SSDO > 0
 const vec2 check_offsets[25] = vec2[25](vec2(-0.4894566f, -0.3586783f),
 vec2(-0.1717194f, 0.6272162f),
@@ -59,14 +64,15 @@ float calcSSDO(vec3 fragpos, vec3 normal) {
     const float aoWeight = 0.7;
     float noise = fract(dot(gl_FragCoord.xy, vec2(0.5, 0.25)));
     float aspectRatio = screenSize.x / screenSize.y;
-    float radius = 0.15 / (fragpos.z);
+    float radius = 0.15 / max(abs(fragpos.z), 0.1);
 
     for (int i = 0; i < numSamples; ++i) {
         vec2 texOffset = pow(length(check_offsets[i].xy), 0.5) * radius * vec2(1.0, aspectRatio) * normalize(check_offsets[i].xy);
-        vec2 newTC = texcoord + texOffset * noise;
+        vec2 newTC = clamp(texcoord + texOffset * noise, vec2(0.001), vec2(0.999));
         vec3 t0 = texture(gPosition, newTC).xyz;
         vec3 centerToSample = t0 - fragpos.xyz;
         float dist = length(centerToSample);
+        if (dist < 0.0001) continue;
         vec3 centerToSampleNormalized = centerToSample / dist;
 
         float attenuation = 1.0f - clamp(dist / 6.0f, 0.0f, 1.0f);
@@ -86,8 +92,8 @@ float calcSSAO(vec3 fragPos, vec3 normal, bool leavesHack) {
     vec2 noiseScale = vec2(screenSize.x/8.0, screenSize.y/8.0);
     vec3 randomVec = texture(texNoise, texcoord * noiseScale).xyz;
 
-    vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
-    vec3 bitangent = cross(normal, tangent);
+    vec3 tangent = safeNormalize(randomVec - normal * dot(randomVec, normal), vec3(1.0, 0.0, 0.0));
+    vec3 bitangent = safeNormalize(cross(normal, tangent), vec3(0.0, 1.0, 0.0));
     mat3 TBN = mat3(tangent, bitangent, normal);
 
     float occlusion = 0.0;
@@ -99,6 +105,7 @@ float calcSSAO(vec3 fragPos, vec3 normal, bool leavesHack) {
 
 vec4 offset = vec4(sample, 1.0);
 offset = projection * offset;
+if (abs(offset.w) < 0.000001) continue;
 offset.xyz /= offset.w;
 offset.xyz = offset.xyz * 0.5 + 0.5;
 
@@ -141,7 +148,7 @@ void main()
     float attenuate = texVal.w + wboitatn;
 
     texVal = texture(gNormal, texcoord);
-    vec3 normal = normalize(texVal.xyz);
+    vec3 normal = safeNormalize(texVal.xyz, vec3(0.0, 1.0, 0.0));
     bool leavesHack = texVal.w > 0;
 
     // This seems to completely fix any distant ssao flickering artifacts while perservering everything else

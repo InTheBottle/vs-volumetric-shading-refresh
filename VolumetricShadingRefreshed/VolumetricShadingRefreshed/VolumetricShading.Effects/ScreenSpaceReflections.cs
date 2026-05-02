@@ -34,6 +34,12 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
         DrawBuffersEnum.ColorAttachment3
     };
 
+    private static readonly DrawBuffersEnum[] DrawBuffersPrimary = new[]
+    {
+        DrawBuffersEnum.ColorAttachment0,
+        DrawBuffersEnum.ColorAttachment1
+    };
+
     private readonly FrameBufferRef[] _framebuffers = new FrameBufferRef[3];
 
     private readonly ClientMain _game;
@@ -391,6 +397,7 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
 
         GL.Disable(EnableCap.Blend);
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, ssrOutFB.FboId);
+        GL.DrawBuffer(DrawBufferMode.ColorAttachment0);
         GL.ClearBuffer(ClearBuffer.Color, 0, ClearBlack);
         var myUniforms = _mod.Uniforms;
         var uniforms = _mod.CApi.Render.ShaderUniforms;
@@ -418,6 +425,7 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
         if (_causticsEnabled && ssrCausticsFB != null && ssrCausticsShader != null)
         {
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, ssrCausticsFB.FboId);
+            GL.DrawBuffer(DrawBufferMode.ColorAttachment0);
             GL.ClearBuffer(ClearBuffer.Color, 0, ClearCaustics);
             shader = ssrCausticsShader;
             shader.Use();
@@ -451,6 +459,7 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
         }
 
         _platform.LoadFrameBuffer(EnumFrameBuffer.Primary);
+        GL.DrawBuffers(DrawBuffersPrimary.Length, DrawBuffersPrimary);
         GL.Enable(EnableCap.Blend);
     }
 
@@ -482,6 +491,15 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
             primaryBuffer.Height,
             ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, ssrFB.FboId);
+        if (_refractionsEnabled)
+        {
+            GL.DrawBuffers(DrawBuffersSsrWithRefraction.Length, DrawBuffersSsrWithRefraction);
+        }
+        else
+        {
+            GL.DrawBuffers(DrawBuffersSsr.Length, DrawBuffersSsr);
+        }
+
         _clearPlayerUnderwater[3] = playerUnderwater;
         GL.ClearBuffer(ClearBuffer.Color, 0, ClearBlack);
         GL.ClearBuffer(ClearBuffer.Color, 1, _clearPlayerUnderwater);
@@ -566,7 +584,8 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
 
         shader.Stop();
         _game.GlPopMatrix();
-        _platform.UnloadFrameBuffer(ssrFB);
+        _platform.LoadFrameBuffer(EnumFrameBuffer.Primary);
+        GL.DrawBuffers(DrawBuffersPrimary.Length, DrawBuffersPrimary);
         _platform.GlDepthMask(false);
         _platform.GlToggleBlend(true);
         _platform.CheckGlError("Error while rendering solid liquids");

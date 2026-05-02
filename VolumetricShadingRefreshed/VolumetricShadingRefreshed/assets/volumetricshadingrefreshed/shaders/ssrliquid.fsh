@@ -32,6 +32,11 @@ layout(location = 3) out vec4 outRefraction;
 #include wavenoise.ash
 #generated dropletnoise
 
+vec3 safeNormalize(vec3 value, vec3 fallback) {
+    float len2 = dot(value, value);
+    return len2 > 0.000001 ? value * inversesqrt(len2) : fallback;
+}
+
 void generateNoiseBump(inout vec3 normalMap, vec3 position, float div) {
     const vec3 offset = vec3(0.05, 0.0, 0.0);
     vec3 posCenter = position.xyz;
@@ -85,6 +90,7 @@ void generateSplashBump(inout vec3 normalMap, vec3 pos)
 
 // https://gamedev.stackexchange.com/questions/86530/is-it-possible-to-calculate-the-tbn-matrix-in-the-fragment-shader
 mat3 cotangentFrame(vec3 N, vec3 p, vec2 uv) {
+    N = safeNormalize(N, vec3(0.0, 1.0, 0.0));
     vec3 dp1 = dFdx(p);
     vec3 dp2 = dFdy(p);
     vec2 duv1 = dFdx(uv);
@@ -95,7 +101,7 @@ mat3 cotangentFrame(vec3 N, vec3 p, vec2 uv) {
     vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
     vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
 
-    float invmax = inversesqrt(max(dot(T, T), dot(B, B)));
+    float invmax = inversesqrt(max(max(dot(T, T), dot(B, B)), 0.000001));
     return mat3(T * invmax, B * invmax, N);
 }
 
@@ -117,7 +123,7 @@ void main()
     vec3 normalMap = vec3(0);
     //generateNoiseBump(normalMap, div);
     vec3 parallaxPos;
-    vec3 viewTangent = normalize(invTbn * (worldPos.xyz - cameraWorldPosition.xyz));
+    vec3 viewTangent = safeNormalize(invTbn * (worldPos.xyz - cameraWorldPosition.xyz), vec3(0.0, 0.0, 1.0));
     generateNoiseParallax(normalMap, viewTangent, div, parallaxPos);
 
     if (dropletIntensity > 0.001) {
@@ -135,9 +141,11 @@ void main()
     }
 
     outGPosition = vec4(fragPosition.xyz, 0);
-    outGNormal = vec4(normalize(camNormalMap*2 + myGNormal), 1.0 - playerUnderwater * caustics);
+    outGNormal = vec4(safeNormalize(camNormalMap*2 + myGNormal, myGNormal), 1.0 - playerUnderwater * caustics);
     outTint = vec4(getColorMapped(terrainTex, vec4(1)).rgb, 0);
     #if VSMOD_REFRACT > 0
-    outRefraction = vec4((-camNormalMap.xy*1.2) / fragPosition.z, 0, 0);
+    float refractionDepth = sign(fragPosition.z) * max(abs(fragPosition.z), 0.05);
+    vec2 refractionOffset = clamp((-camNormalMap.xy * 1.2) / refractionDepth, vec2(-0.08), vec2(0.08));
+    outRefraction = vec4(refractionOffset, 0, 0);
     #endif
 }

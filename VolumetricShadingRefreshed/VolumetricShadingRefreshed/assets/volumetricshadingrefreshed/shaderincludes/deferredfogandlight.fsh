@@ -266,7 +266,8 @@ float calculateVolumetricScatterDeferred(vec4 worldPos, vec4 cameraPos) {
     }
 
     float normalOut = clamp(scattered * 2.4, 0.0, 1.0);
-    float intensity = dot(dV / rayStepLength, normalize(shadowLightPos.xyz));
+    float shadowLightLen = max(length(shadowLightPos.xyz), 0.00001);
+    float intensity = dot(dV / rayStepLength, shadowLightPos.xyz / shadowLightLen);
     float phase = vsmodVolumetricPhase(intensity);
     return vsmodVolumetricResponse(normalOut, phase);
     #endif
