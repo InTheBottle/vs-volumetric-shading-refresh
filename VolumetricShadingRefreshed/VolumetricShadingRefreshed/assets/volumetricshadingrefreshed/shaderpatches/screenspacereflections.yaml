@@ -1,8 +1,8 @@
 - type: token
   filename: chunkliquid.fsh
-  tokens: texColor.a += (max(0.0, diff/16 + noise/(12 - 8*min(1,windSpeed))) + vn * 0.25) / clamp(fresnel, 0.5, 1);
+  tokens: texColor.a += (max(0, diff/16 + noise/(12 - 8*min(1,windSpeed))) + vn / 4) / clamp(fresnel, 0.5, 1);
   content: |
-    texColor.a += (max(0.0, diff/16 + noise/(12 - 8*min(1,windSpeed))) + vn * 0.25) / clamp(fresnel, 0.5, 1);
+    texColor.a += (max(0, diff/16 + noise/(12 - 8*min(1,windSpeed))) + vn / 4) / clamp(fresnel, 0.5, 1);
     #if VSMOD_SSR > 0
     texColor.a *= VSMOD_SSR_WATER_TRANSPARENCY;
     #endif
@@ -18,12 +18,10 @@
 
 - type: token
   filename: chunkliquid.fsh
-  tokens: "#if SHADOWQUALITY == 0 if (skyExposed > 0) { #endif"
+  tokens: "// Specular reflection"
   content: |
     #if VSMOD_SSR == 0
-    #if SHADOWQUALITY == 0
-    if (skyExposed > 0) {
-    #endif
+    // Specular reflection
 
 - type: token
   filename: chunkliquid.fsh
@@ -42,9 +40,9 @@
   tokens: uniform sampler2D ssaoScene;
   snippet: ssrfinalheader.txt
 
-- type: token
+- type: regex
   filename: final.fsh
-  tokens: void main(void) {
+  regex: 'void\s+main\s*\(\s*void\s*\)\s*\{'
   snippet: ssrfinalrefract.txt
 
 - type: token

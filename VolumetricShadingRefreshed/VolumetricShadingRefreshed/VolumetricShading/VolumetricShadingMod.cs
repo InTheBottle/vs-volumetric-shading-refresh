@@ -124,6 +124,16 @@ public class VolumetricShadingMod : ModSystem
 
     private static void SetConfigDefaults()
     {
+        var firstInstall = !ModSettings.ScreenSpaceReflectionsEnabledSet &&
+                           !ModSettings.SSDOEnabledSet &&
+                           !ModSettings.UnderwaterTweaksEnabledSet &&
+                           !ModSettings.DeferredLightingEnabledSet;
+
+        if (!ModSettings.ScreenSpaceReflectionsEnabledSet)
+        {
+            ModSettings.ScreenSpaceReflectionsEnabled = true;
+        }
+
         if (ModSettings.VolumetricLightingFlatness == 0)
         {
             ModSettings.VolumetricLightingFlatness = 120;
@@ -131,7 +141,12 @@ public class VolumetricShadingMod : ModSystem
 
         if (ModSettings.VolumetricLightingIntensity == 0)
         {
-            ModSettings.VolumetricLightingIntensity = 30;
+            ModSettings.VolumetricLightingIntensity = 25;
+        }
+
+        if (!ModSettings.SSDOEnabledSet)
+        {
+            ModSettings.SSDOEnabled = true;
         }
 
         if (!ModSettings.SSRWaterTransparencySet)
@@ -166,7 +181,7 @@ public class VolumetricShadingMod : ModSystem
 
         if (ModSettings.SoftShadowSamples == 0)
         {
-            ModSettings.SoftShadowSamples = 16;
+            ModSettings.SoftShadowSamples = 8;
         }
 
         if (!ModSettings.NearPeterPanningAdjustmentSet)
@@ -194,6 +209,16 @@ public class VolumetricShadingMod : ModSystem
             ModSettings.SSRCausticsEnabled = true;
         }
 
+        if (!ModSettings.OverexposureIntensitySet)
+        {
+            ModSettings.OverexposureIntensity = 25;
+        }
+
+        if (!ModSettings.SoftShadowsEnabledSet)
+        {
+            ModSettings.SoftShadowsEnabled = true;
+        }
+
         if (!ModSettings.UnderwaterTweaksEnabledSet)
         {
             ModSettings.UnderwaterTweaksEnabled = true;
@@ -201,7 +226,22 @@ public class VolumetricShadingMod : ModSystem
 
         if (!ModSettings.DeferredLightingEnabledSet)
         {
-            ModSettings.DeferredLightingEnabled = false;
+            ModSettings.DeferredLightingEnabled = true;
+        }
+
+        if (firstInstall && ClientSettings.ShadowMapQuality == 0)
+        {
+            ClientSettings.ShadowMapQuality = 1;
+        }
+
+        if (firstInstall && ClientSettings.GodRayQuality == 0)
+        {
+            ClientSettings.GodRayQuality = 1;
+        }
+
+        if (firstInstall && ClientSettings.SSAOQuality == 0)
+        {
+            ClientSettings.SSAOQuality = 1;
         }
     }
 

@@ -42,9 +42,9 @@
 
 - type: token
   filename: entityanimated.fsh
-  tokens: if (glitchStrength > 0) texColor = applyRustEffect(texColor, normal, vertexPosition + vec3(seed), 0);
+  tokens: if (glitchStrength > Epsilon) texColor = applyRustEffect(texColor, normal, vertexPosition + vec3(seed), 0);
   content: |
-    if (glitchStrength > 0) texColor = applyRustEffect(texColor, normal, vertexPosition + vec3(seed), 0);
+    if (glitchStrength > Epsilon) texColor = applyRustEffect(texColor, normal, vertexPosition + vec3(seed), 0);
     texColor *= color;
     texColor.rgb *= b;
     float glow = 0.0;

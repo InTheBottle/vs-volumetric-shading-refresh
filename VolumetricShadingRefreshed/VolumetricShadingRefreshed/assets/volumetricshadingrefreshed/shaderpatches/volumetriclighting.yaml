@@ -50,10 +50,11 @@
 
 - type: token
   filename: chunkliquid.fsh
-  tokens: outGlow = vec4(glowLevel, 0, 0, color.a);
+  tokens: OIT(texColor, glowLevel);
   content: |
     float scatterAmt = calculateVolumetricScatter(fWorldPos);
-    outGlow = vec4(glowLevel, scatterAmt, 0, color.a);
+    OIT(texColor, glowLevel);
+    outGlow.y = scatterAmt;
 
 - type: start
   filename: chunkliquid.vsh
@@ -70,7 +71,7 @@
 
 - type: token
   filename: chunkopaque.fsh
-  tokens: "#if SSAOLEVEL > 0 outGPosition"
+  tokens: "#if SSAOLEVEL > 0 outGPosition ="
   content: |
     #if VSMOD_DEFERREDLIGHTING == 0
     godrayLevel = calculateVolumetricScatter(worldPos.xyz);
@@ -78,7 +79,7 @@
     godrayLevel = 0.0;
     #endif
     #if SSAOLEVEL > 0
-    outGPosition
+    outGPosition =
 
 - type: token
   filename: chunkopaque.fsh
@@ -100,7 +101,7 @@
 
 - type: token
   filename: chunktopsoil.fsh
-  tokens: "#if SSAOLEVEL > 0 outGPosition"
+  tokens: "#if SSAOLEVEL > 0 outGPosition ="
   content: |
     #if VSMOD_DEFERREDLIGHTING == 0
     float scatterAmt = calculateVolumetricScatter(worldPos.xyz);
@@ -108,7 +109,7 @@
     float scatterAmt = 0.0;
     #endif
     #if SSAOLEVEL > 0
-    outGPosition
+    outGPosition =
 
 - type: token
   filename: chunktopsoil.fsh
@@ -140,6 +141,7 @@
 
 - type: token
   filename: chunktransparent.fsh
+  optional: yes
   tokens: outReveal.r = color.a;
   content: |
     outReveal.r = color.a;
@@ -147,6 +149,7 @@
 
 - type: token
   filename: chunktransparent.fsh
+  optional: yes
   tokens: 0, 0, color.a);
   content: |
     scatterAmt, 0, color.a);
@@ -166,16 +169,16 @@
 
 - type: token
   filename: clouds.fsh
-  tokens: outGlow = vec4(glow, 0
+  tokens: outGlow = vec4(max(0, skyGlow.a/10 + baseBloom), 0
   content: |
     float actOut = 0.0f;
     #if GODRAYS > 0
-    	float normalOut = 0.1f;
-    	float intensity = dot(normalize(shadowCoordsFar.xyz-shadowRayStart.xyz),  normalize(shadowLightPos.xyz-shadowRayStart.xyz));
-    	float phase = 2.5+exp(intensity*3.0)/3.0;
-    	actOut = pow(phase * normalOut, VOLUMETRIC_FLATNESS);
+        float normalOut = 0.1f;
+        float intensity = dot(normalize(shadowCoordsFar.xyz-shadowRayStart.xyz), normalize(shadowLightPos.xyz-shadowRayStart.xyz));
+        float phase = 1.35 + pow(clamp(intensity * 0.5 + 0.5, 0.0, 1.0), 4.0);
+        actOut = pow(phase * normalOut, VOLUMETRIC_FLATNESS);
     #endif
-    outGlow = vec4(glow, actOut
+    outGlow = vec4(max(0, skyGlow.a/10 + baseBloom), actOut
 
 - type: start
   filename: clouds.vsh
@@ -193,14 +196,14 @@
 
 - type: token
   filename: entityanimated.fsh
-  tokens: "#if SSAOLEVEL > 0 outGPosition ="
+  tokens: "#if USEOIT == 0 && SSAOLEVEL > 0 outGPosition ="
   content: |
     #if VSMOD_DEFERREDLIGHTING == 0
     float scatterAmt = calculateVolumetricScatter(worldPos.xyz);
     #else
     float scatterAmt = 0.0;
     #endif
-    #if SSAOLEVEL > 0
+    #if USEOIT == 0 && SSAOLEVEL > 0
     outGPosition =
 
 - type: token
@@ -227,13 +230,13 @@
 
 - type: token
   filename: entityanimated.vsh
-  tokens: "#if SSAOLEVEL > 0 fragPosition"
+  tokens: "#if SSAOLEVEL > 0 fragPosition = cameraPos;"
   content: |
     #if GODRAYS > 0 && VSMOD_DEFERREDLIGHTING == 0
     prepareVolumetricLighting(lightPosition, rgbaLightIn);
     #endif
     #if SSAOLEVEL > 0
-    fragPosition
+    fragPosition = cameraPos;
 
 - type: regex
   filename: final.fsh

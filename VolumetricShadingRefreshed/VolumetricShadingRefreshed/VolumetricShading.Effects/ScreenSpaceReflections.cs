@@ -13,6 +13,27 @@ namespace VolumetricShadingRefreshed.VolumetricShading.Effects;
 
 public class ScreenSpaceReflections : IRenderer, IDisposable
 {
+    private const float MinRainReflectionStrength = 0.01f;
+
+    private static readonly float[] ClearBlack = new[] { 0f, 0f, 0f, 1f };
+
+    private static readonly float[] ClearCaustics = new[] { 0.5f };
+
+    private static readonly DrawBuffersEnum[] DrawBuffersSsr = new[]
+    {
+        DrawBuffersEnum.ColorAttachment0,
+        DrawBuffersEnum.ColorAttachment1,
+        DrawBuffersEnum.ColorAttachment2
+    };
+
+    private static readonly DrawBuffersEnum[] DrawBuffersSsrWithRefraction = new[]
+    {
+        DrawBuffersEnum.ColorAttachment0,
+        DrawBuffersEnum.ColorAttachment1,
+        DrawBuffersEnum.ColorAttachment2,
+        DrawBuffersEnum.ColorAttachment3
+    };
+
     private readonly FrameBufferRef[] _framebuffers = new FrameBufferRef[3];
 
     private readonly ClientMain _game;
@@ -24,6 +45,8 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
     private readonly IShaderProgram[] _shaders = new IShaderProgram[6];
 
     private readonly FieldInfo _textureIdsField;
+
+    private readonly float[] _clearPlayerUnderwater = { 0f, 0f, 0f, 1f };
 
     private bool _causticsEnabled;
 
@@ -72,12 +95,15 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
 
         _textureIdsField = typeof(ChunkRenderer).GetField("textureIds", BindingFlags.Instance | BindingFlags.Public);
         mod.Events.RebuildFramebuffers += SetupFramebuffers;
-        SetupFramebuffers(_platform.FrameBuffers);
+        if (_enabled)
+        {
+            SetupFramebuffers(_platform.FrameBuffers);
+        }
     }
 
     public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
     {
-        if (!_enabled)
+        if (!_enabled || stage != EnumRenderStage.AfterOIT)
         {
             return;
         }
@@ -87,39 +113,14 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
             _chunkRenderer = _game.GetChunkRenderer();
         }
 
-        /* Keeping this here temporarily (also the ones above) just so if any unseen concequences do occurr it'll be easy to fix (hopefully)
-        if (stage == EnumRenderStage.Opaque)
-        {
-            OnPreRender(deltaTime);
-            OnRenderSsrChunks();
-            return;
-        }
-
-        if (stage == EnumRenderStage.AfterOIT)
-        {
-            OnRenderSsrOut();
-        }*/
-
-        // Both pass called in one render stage.
-        if (stage == EnumRenderStage.AfterOIT)
-        {
-            OnPreRender(deltaTime);
-            OnRenderSsrChunks();
-            OnRenderSsrOut();
-        }
+        OnPreRender(deltaTime);
+        OnRenderSsrChunks();
+        OnRenderSsrOut();
     }
 
     public void Dispose()
     {
-        var windowsPlatform = _mod.CApi.GetClientPlatformWindows();
-        for (var i = 0; i < _framebuffers.Length; i++)
-        {
-            if (_framebuffers[i] != null)
-            {
-                windowsPlatform.DisposeFrameBuffer(_framebuffers[i]);
-                _framebuffers[i] = null;
-            }
-        }
+        DisposeFramebuffers();
 
         for (var j = 0; j < _shaders.Length; j++)
         {
@@ -183,21 +184,35 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
     private void OnEnabledChanged(bool enabled)
     {
         _enabled = enabled;
+        if (enabled)
+        {
+            SetupFramebuffers(_platform.FrameBuffers);
+            return;
+        }
+
+        DisposeFramebuffers();
     }
 
     private void OnRainReflectionsChanged(bool enabled)
     {
         _rainEnabled = enabled;
+        if (!enabled)
+        {
+            _currentRain = 0f;
+            _targetRain = 0f;
+        }
     }
 
     private void OnRefractionsChanged(bool enabled)
     {
         _refractionsEnabled = enabled;
+        SetupFramebuffers(_platform.FrameBuffers);
     }
 
     private void OnCausticsChanged(bool enabled)
     {
         _causticsEnabled = enabled;
+        SetupFramebuffers(_platform.FrameBuffers);
     }
 
     private bool ReloadShaders()
@@ -214,28 +229,39 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
             _shaders[i] = null;
         }
 
+        if (!_enabled)
+        {
+            return true;
+        }
+
         _shaders[0] = _mod.RegisterShader("ssrliquid", ref success);
         _shaders[1] = _mod.RegisterShader("ssropaque", ref success);
         ((ShaderProgram)_shaders[1]).SetCustomSampler("terrainTexLinear", true);
         _shaders[2] = _mod.RegisterShader("ssrtransparent", ref success);
-        _shaders[3] = _mod.RegisterShader("ssrtopsoil", ref success);
+        if (_rainEnabled)
+        {
+            _shaders[3] = _mod.RegisterShader("ssrtopsoil", ref success);
+        }
+
         _shaders[4] = _mod.RegisterShader("ssrout", ref success);
-        _shaders[5] = _mod.RegisterShader("ssrcausticsout", ref success);
+        if (_causticsEnabled)
+        {
+            _shaders[5] = _mod.RegisterShader("ssrcausticsout", ref success);
+        }
+
         return success;
     }
 
     public void SetupFramebuffers(List<FrameBufferRef> mainBuffers)
     {
-        _mod.Mod.Logger.Event("Recreating framebuffers");
-        for (var i = 0; i < _framebuffers.Length; i++)
+        DisposeFramebuffers();
+
+        if (!_enabled)
         {
-            if (_framebuffers[i] != null)
-            {
-                _platform.DisposeFrameBuffer(_framebuffers[i]);
-                _framebuffers[i] = null;
-            }
+            return;
         }
 
+        _mod.Mod.Logger.Event("Recreating framebuffers");
         var fbPrimary = mainBuffers[0];
 
         var fbWidth = fbPrimary.Width;
@@ -266,22 +292,11 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
 
         if (_refractionsEnabled)
         {
-            GL.DrawBuffers(4, new[]
-            {
-                DrawBuffersEnum.ColorAttachment0,
-                DrawBuffersEnum.ColorAttachment1,
-                DrawBuffersEnum.ColorAttachment2,
-                DrawBuffersEnum.ColorAttachment3
-            });
+            GL.DrawBuffers(DrawBuffersSsrWithRefraction.Length, DrawBuffersSsrWithRefraction);
         }
         else
         {
-            GL.DrawBuffers(3, new[]
-            {
-                DrawBuffersEnum.ColorAttachment0,
-                DrawBuffersEnum.ColorAttachment1,
-                DrawBuffersEnum.ColorAttachment2
-            });
+            GL.DrawBuffers(DrawBuffersSsr.Length, DrawBuffersSsr);
         }
 
         Framebuffers.CheckStatus();
@@ -317,8 +332,25 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
         _screenQuad = _platform.GetScreenQuad();
     }
 
+    private void DisposeFramebuffers()
+    {
+        for (var i = 0; i < _framebuffers.Length; i++)
+        {
+            if (_framebuffers[i] != null)
+            {
+                _platform.DisposeFrameBuffer(_framebuffers[i]);
+                _framebuffers[i] = null;
+            }
+        }
+    }
+
     private void OnPreRender(float dt)
     {
+        if (!_rainEnabled)
+        {
+            return;
+        }
+
         _rainAccumulator += dt;
         if (_rainAccumulator > 5f)
         {
@@ -347,7 +379,7 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
         var ssrFB = _framebuffers[0];
         var ssrOutShader = _shaders[4];
         var ssrCausticsShader = _shaders[5];
-        if (ssrOutFB == null)
+        if (ssrOutFB == null || ssrFB == null)
         {
             return;
         }
@@ -359,7 +391,7 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
 
         GL.Disable(EnableCap.Blend);
         _platform.LoadFrameBuffer(ssrOutFB);
-        GL.ClearBuffer(ClearBuffer.Color, 0, new[] { 0f, 0f, 0f, 1f });
+        GL.ClearBuffer(ClearBuffer.Color, 0, ClearBlack);
         var myUniforms = _mod.Uniforms;
         var uniforms = _mod.CApi.Render.ShaderUniforms;
         var ambient = _mod.CApi.Ambient;
@@ -386,7 +418,7 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
         if (_causticsEnabled && ssrCausticsFB != null && ssrCausticsShader != null)
         {
             _platform.LoadFrameBuffer(ssrCausticsFB);
-            GL.ClearBuffer(ClearBuffer.Color, 0, new[] { 0.5f });
+            GL.ClearBuffer(ClearBuffer.Color, 0, ClearCaustics);
             shader = ssrCausticsShader;
             shader.Use();
             shader.BindTexture2D("gDepth", _platform.FrameBuffers[0].DepthTextureId, 0);
@@ -430,7 +462,7 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
             return;
         }
 
-        if (_shaders[0] == null)
+        if (_shaders[0] == null || _shaders[1] == null || _shaders[2] == null)
         {
             return;
         }
@@ -450,21 +482,20 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
             primaryBuffer.Height,
             ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
         _platform.LoadFrameBuffer(ssrFB);
-        GL.ClearBuffer(ClearBuffer.Color, 0, new[] { 0f, 0f, 0f, 1f });
-        GL.ClearBuffer(ClearBuffer.Color, 1, new[] { 0f, 0f, 0f, playerUnderwater });
-        GL.ClearBuffer(ClearBuffer.Color, 2, new[] { 0f, 0f, 0f, 1f });
+        _clearPlayerUnderwater[3] = playerUnderwater;
+        GL.ClearBuffer(ClearBuffer.Color, 0, ClearBlack);
+        GL.ClearBuffer(ClearBuffer.Color, 1, _clearPlayerUnderwater);
+        GL.ClearBuffer(ClearBuffer.Color, 2, ClearBlack);
         if (_refractionsEnabled)
         {
-            GL.ClearBuffer(ClearBuffer.Color, 3, new[] { 0f, 0f, 0f, 1f });
+            GL.ClearBuffer(ClearBuffer.Color, 3, ClearBlack);
         }
 
         _platform.GlEnableCullFace();
         _platform.GlDepthMask(true);
         _platform.GlEnableDepthTest();
         _platform.GlToggleBlend(false);
-        var climateAt = _game.BlockAccessor.GetClimateAt(_game.EntityPlayer.Pos.AsBlockPos);
-        var num = GameMath.Clamp((float)((climateAt.Temperature + 1.0) / 4.0), 0f, 1f);
-        var curRainFall = climateAt.Rainfall * num;
+        var curRainFall = _rainEnabled ? _currentRain : 0f;
         var cameraPos = _game.EntityPlayer.CameraPos;
         _game.GlPushMatrix();
         _game.GlLoadMatrix(_mod.CApi.Render.CameraMatrixOrigin);
@@ -484,7 +515,7 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
         shader.Stop();
         GL.BindSampler(0, 0);
         GL.BindSampler(1, 0);
-        if (_rainEnabled)
+        if (_rainEnabled && _currentRain > MinRainReflectionStrength && _shaders[3] != null)
         {
             shader = _shaders[3];
             shader.Use();

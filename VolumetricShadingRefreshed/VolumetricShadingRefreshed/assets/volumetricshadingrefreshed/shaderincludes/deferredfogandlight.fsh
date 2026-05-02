@@ -229,7 +229,7 @@ float calculateVolumetricScatterDeferred(vec4 worldPos, vec4 cameraPos) {
 
     float dither = fract(0.75487765 * gl_FragCoord.x + 0.56984026 * gl_FragCoord.y);
 
-    const int maxSamples = 6;
+    const int maxSamples = 4;
 
     vec3 dV = (shadowCoordsFar.xyz-shadowRayStart.xyz)/maxSamples;
 
@@ -244,8 +244,8 @@ float calculateVolumetricScatterDeferred(vec4 worldPos, vec4 cameraPos) {
 
     float normalOut = min(1, vL * length(worldPos) / 1000.0f / maxSamples);
     float intensity = dot(normalize(dV), normalize(shadowLightPos.xyz));
-    //float phase = 2.5+exp(intensity*3.0)/3.0;
-    float phase = 2.0+exp(intensity*4.0)/4.0;
+    float forwardScatter = pow(clamp(intensity * 0.5 + 0.5, 0.0, 1.0), 4.0);
+    float phase = 1.35 + forwardScatter;
     return min(0.9f, pow(phase * normalOut, VOLUMETRIC_FLATNESS));
     #endif
     return 0.0f;

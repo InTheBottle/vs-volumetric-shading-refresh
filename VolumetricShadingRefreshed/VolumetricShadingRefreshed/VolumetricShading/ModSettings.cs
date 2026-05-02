@@ -10,6 +10,9 @@ public static class ModSettings
         set => ClientSettings.Inst.Bool["volumetricshading_screenSpaceReflections"] = value;
     }
 
+    public static bool ScreenSpaceReflectionsEnabledSet =>
+        ClientSettings.Inst.Bool.Exists("volumetricshading_screenSpaceReflections");
+
     public static int VolumetricLightingFlatness
     {
         get => ClientSettings.Inst.GetIntSetting("volumetricshading_volumetricLightingFlatness");
@@ -27,6 +30,9 @@ public static class ModSettings
         get => ClientSettings.Inst.GetBoolSetting("volumetricshading_SSDO");
         set => ClientSettings.Inst.Bool["volumetricshading_SSDO"] = value;
     }
+
+    public static bool SSDOEnabledSet =>
+        ClientSettings.Inst.Bool.Exists("volumetricshading_SSDO");
 
     public static bool SSRRainReflectionsEnabled
     {
@@ -103,6 +109,9 @@ public static class ModSettings
         set => ClientSettings.Inst.Int["volumetricshading_overexposureIntensity"] = value;
     }
 
+    public static bool OverexposureIntensitySet =>
+        ClientSettings.Inst.Int.Exists("volumetricshading_overexposureIntensity");
+
     public static int SunBloomIntensity
     {
         get => ClientSettings.Inst.GetIntSetting("volumetricshading_sunBloomIntensity");
@@ -120,6 +129,9 @@ public static class ModSettings
         get => ClientSettings.Inst.GetBoolSetting("volumetricshading_softShadows");
         set => ClientSettings.Inst.Bool["volumetricshading_softShadows"] = value;
     }
+
+    public static bool SoftShadowsEnabledSet =>
+        ClientSettings.Inst.Bool.Exists("volumetricshading_softShadows");
 
     public static int SoftShadowSamples
     {

@@ -9,6 +9,22 @@ namespace VolumetricShadingRefreshed.VolumetricShading.Effects;
 
 public class DeferredLighting
 {
+    private static readonly float[] ClearBlack = new[] { 0f, 0f, 0f, 1f };
+
+    private static readonly DrawBuffersEnum[] DrawBuffersDeferred = new[]
+    {
+        DrawBuffersEnum.ColorAttachment0,
+        DrawBuffersEnum.ColorAttachment1,
+        DrawBuffersEnum.ColorAttachment2,
+        DrawBuffersEnum.ColorAttachment3
+    };
+
+    private static readonly DrawBuffersEnum[] DrawBuffersPrimary = new[]
+    {
+        DrawBuffersEnum.ColorAttachment0,
+        DrawBuffersEnum.ColorAttachment1
+    };
+
     private readonly VolumetricShadingMod _mod;
 
     private readonly ClientPlatformWindows _platform;
@@ -48,6 +64,8 @@ public class DeferredLighting
         {
             ClientSettings.SSAOQuality = 1;
         }
+
+        SetupFramebuffers(_platform.FrameBuffers);
     }
 
     private void OnSSAOQualityChanged(int quality)
@@ -55,6 +73,7 @@ public class DeferredLighting
         if (quality == 0 && _enabled)
         {
             ModSettings.DeferredLightingEnabled = false;
+            _enabled = false;
             _platform.RebuildFrameBuffers();
             _mod.CApi.Shader.ReloadShaders();
         }
@@ -67,6 +86,12 @@ public class DeferredLighting
         if (shader != null)
         {
             shader.Dispose();
+        }
+
+        if (!_enabled)
+        {
+            _shader = null;
+            return true;
         }
 
         _shader = (ShaderProgram)_mod.RegisterShader("deferredlighting", ref success);
@@ -113,13 +138,7 @@ public class DeferredLighting
             TextureTarget.Texture2D, fbPrimary.ColorTextureIds[2], 0);
         GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment3,
             TextureTarget.Texture2D, fbPrimary.ColorTextureIds[3], 0);
-        GL.DrawBuffers(4, new[]
-        {
-            DrawBuffersEnum.ColorAttachment0,
-            DrawBuffersEnum.ColorAttachment1,
-            DrawBuffersEnum.ColorAttachment2,
-            DrawBuffersEnum.ColorAttachment3
-        });
+        GL.DrawBuffers(DrawBuffersDeferred.Length, DrawBuffersDeferred);
         Framebuffers.CheckStatus();
         _frameBuffer = frameBufferRef;
         _screenQuad = _platform.GetScreenQuad();
@@ -140,7 +159,7 @@ public class DeferredLighting
 
     public void OnEndRender()
     {
-        if (_frameBuffer == null)
+        if (_frameBuffer == null || _shader == null)
         {
             return;
         }
@@ -151,19 +170,15 @@ public class DeferredLighting
         // Ensure viewport matches the primary FBO size to hopefully avoid lower-left rendering.
         GL.Viewport(0, 0, fbPrimary.Width, fbPrimary.Height);
 
-        GL.ClearBuffer(ClearBuffer.Color, 0, new[] { 0f, 0f, 0f, 1f });
-        GL.ClearBuffer(ClearBuffer.Color, 1, new[] { 0f, 0f, 0f, 1f });
+        GL.ClearBuffer(ClearBuffer.Color, 0, ClearBlack);
+        GL.ClearBuffer(ClearBuffer.Color, 1, ClearBlack);
         var render = _mod.CApi.Render;
         var uniforms = render.ShaderUniforms;
         var myUniforms = _mod.Uniforms;
         var fb = _frameBuffer;
         _platform.GlDisableDepthTest();
         _platform.GlToggleBlend(false);
-        GL.DrawBuffers(2, new[]
-        {
-            DrawBuffersEnum.ColorAttachment0,
-            DrawBuffersEnum.ColorAttachment1
-        });
+        GL.DrawBuffers(DrawBuffersPrimary.Length, DrawBuffersPrimary);
         var s = _shader;
         s.Use();
         s.BindTexture2D("gDepth", fbPrimary.DepthTextureId);
@@ -192,13 +207,7 @@ public class DeferredLighting
         _platform.RenderFullscreenTriangle(_screenQuad);
         s.Stop();
         _platform.CheckGlError("Error while calculating deferred lighting");
-        GL.DrawBuffers(4, new[]
-        {
-            DrawBuffersEnum.ColorAttachment0,
-            DrawBuffersEnum.ColorAttachment1,
-            DrawBuffersEnum.ColorAttachment2,
-            DrawBuffersEnum.ColorAttachment3
-        });
+        GL.DrawBuffers(DrawBuffersDeferred.Length, DrawBuffersDeferred);
         _platform.GlEnableDepthTest();
     }
 

@@ -70,14 +70,13 @@ public class YamlPatchLoader
 
     private void AddTokenPatch(PatchEntry patch, string content)
     {
-        if (patch.Filename == null)
-        {
-            _patcher.AddTokenPatch(patch.Tokens, content);
-        }
-        else
-        {
-            _patcher.AddTokenPatch(patch.Filename, patch.Tokens, content);
-        }
+        var tokenPatch = patch.Filename == null
+            ? new TokenPatch(patch.Tokens)
+            : new TokenPatch(patch.Filename, patch.Tokens);
+        tokenPatch.Optional = patch.Optional;
+        tokenPatch.Multiple = patch.Multiple;
+        tokenPatch.ReplacementString = content;
+        _patcher.AddPatch(tokenPatch);
     }
 
     private void AddRegexPatch(PatchEntry patch, string content)

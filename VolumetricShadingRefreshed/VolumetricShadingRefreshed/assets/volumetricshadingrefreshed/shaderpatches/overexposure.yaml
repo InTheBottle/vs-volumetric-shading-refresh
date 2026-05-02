@@ -49,28 +49,28 @@
   filename: chunktransparent.fsh
   content: uniform float fogDensityIn;
 
-- type: token
+- type: regex
   filename: chunktransparent.fsh
-  tokens: void drawPixel(vec4 color)
-  content: void drawPixel(vec4 color, float glow)
-
-- type: token
-  filename: chunktransparent.fsh
-  tokens: vec4 texColor = rgba * getColorMapped(terrainTex, texture(terrainTex, uv));
+  regex: 'float\s+murkiness\s*=\s*getUnderwaterMurkiness\s*\(\s*\)\s*;\s*if\s*\(\s*murkiness\s*>\s*0\s*\)\s*\{[\s\S]*?\}\s*else\s*\{[\s\S]*?\}'
   content: |
-    vec4 texColor = rgba * getColorMapped(terrainTex, texture(terrainTex, uv));
-    float glow2 = 0.0;
-    texColor = applyOverexposedFogAndShadow(texColor, fogAmount, normal, normalShadeIntensity, 0.45, worldPos.xyz, fogDensityIn, glow2);
+    float glow = 0.0;
+    float murkiness = getUnderwaterMurkiness();
+    if (murkiness > 0) {
+        texColor = applyOverexposedFogAndShadow(texColor, 0, normal, normalShadeIntensity, 0.45, worldPos.xyz, fogDensityIn, glow);
+        texColor.rgb = applyUnderwaterEffects(texColor.rgb, murkiness);
+    } else {
+        texColor = applyOverexposedFogAndShadow(texColor, fogAmount, normal, normalShadeIntensity, 0.45, worldPos.xyz, fogDensityIn, glow);
+    }
 
 - type: token
   filename: chunktransparent.fsh
-  tokens: drawPixel(texColor);
-  content: drawPixel(texColor, glow2);
+  tokens: float glow = 0;
+  content: ''
 
 - type: token
   filename: chunktransparent.fsh
-  tokens: outGlow = vec4(glowLevel
-  content: outGlow = vec4(glowLevel + glow
+  tokens: OIT(texColor, glowLevel);
+  content: OIT(texColor, glowLevel + glow);
 
 - type: start
   filename: entityanimated.fsh
