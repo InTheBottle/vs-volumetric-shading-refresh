@@ -151,7 +151,7 @@ public class DeferredLighting
             return;
         }
 
-        _platform.LoadFrameBuffer(_frameBuffer);
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, _frameBuffer.FboId);
         // Ensures that the viewport matches the deferred FBO size :)
         GL.Viewport(0, 0, _frameBuffer.Width, _frameBuffer.Height);
         GL.Clear(ClearBufferMask.DepthBufferBit | ClearBufferMask.ColorBufferBit);

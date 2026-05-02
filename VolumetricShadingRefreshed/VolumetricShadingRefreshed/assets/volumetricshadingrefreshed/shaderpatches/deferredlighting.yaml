@@ -41,20 +41,6 @@
     #endif
 
 - type: token
-  filename: entityanimated.fsh
-  tokens: if (glitchStrength > Epsilon) texColor = applyRustEffect(texColor, normal, vertexPosition + vec3(seed), 0);
-  content: |
-    if (glitchStrength > Epsilon) texColor = applyRustEffect(texColor, normal, vertexPosition + vec3(seed), 0);
-    texColor *= color;
-    texColor.rgb *= b;
-    float glow = 0.0;
-    #if VSMOD_DEFERREDLIGHTING > 0
-    outColor = texColor;
-    #else
-    outColor = applyOverexposedFogAndShadow(texColor, fogAmount, normal, 1.0, intensity, worldPos.xyz, fogDensityIn, glow);
-    #endif
-
-- type: token
   filename: entityanimated.vsh
   tokens: calcShadowMapCoords(viewMatrix, worldPos);
   content: |

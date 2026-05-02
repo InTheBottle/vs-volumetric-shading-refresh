@@ -390,7 +390,7 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
         }
 
         GL.Disable(EnableCap.Blend);
-        _platform.LoadFrameBuffer(ssrOutFB);
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, ssrOutFB.FboId);
         GL.ClearBuffer(ClearBuffer.Color, 0, ClearBlack);
         var myUniforms = _mod.Uniforms;
         var uniforms = _mod.CApi.Render.ShaderUniforms;
@@ -417,7 +417,7 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
         _platform.CheckGlError("Error while calculating SSR");
         if (_causticsEnabled && ssrCausticsFB != null && ssrCausticsShader != null)
         {
-            _platform.LoadFrameBuffer(ssrCausticsFB);
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, ssrCausticsFB.FboId);
             GL.ClearBuffer(ClearBuffer.Color, 0, ClearCaustics);
             shader = ssrCausticsShader;
             shader.Use();
@@ -481,7 +481,7 @@ public class ScreenSpaceReflections : IRenderer, IDisposable
         GL.BlitFramebuffer(0, 0, primaryBuffer.Width, primaryBuffer.Height, 0, 0, primaryBuffer.Width,
             primaryBuffer.Height,
             ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
-        _platform.LoadFrameBuffer(ssrFB);
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, ssrFB.FboId);
         _clearPlayerUnderwater[3] = playerUnderwater;
         GL.ClearBuffer(ClearBuffer.Color, 0, ClearBlack);
         GL.ClearBuffer(ClearBuffer.Color, 1, _clearPlayerUnderwater);

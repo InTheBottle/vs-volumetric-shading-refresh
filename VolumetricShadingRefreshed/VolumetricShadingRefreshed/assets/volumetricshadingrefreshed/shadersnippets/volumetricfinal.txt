@@ -2,11 +2,6 @@
 vec4 grc = texture(godrayParts, refractedUV);
 float maxComp = max(max(grc.r, grc.g), grc.b);
 if (maxComp > 0.005) {
-    float scaleMul = 1.0 / maxComp;
-    grc *= scaleMul;
-    //color.rgb += grc.rgb * maxComp;
-    color.rgb = mix(color.rgb, grc.rgb*1.5, maxComp);
-    //color.rgb = grc.rgb * maxComp;
-    color.rgb = min(color.rgb, vec3(1));
+    color.rgb = min(color.rgb + grc.rgb * 0.65, vec3(1));
     color.a=1;
 }

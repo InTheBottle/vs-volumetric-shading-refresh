@@ -3,6 +3,7 @@ using HarmonyLib;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
+using Vintagestory.Client.NoObf;
 using VolumetricShadingRefreshed.VolumetricShading.Effects;
 using VolumetricShadingRefreshed.VolumetricShading.Gui;
 using VolumetricShadingRefreshed.VolumetricShading.Patch;

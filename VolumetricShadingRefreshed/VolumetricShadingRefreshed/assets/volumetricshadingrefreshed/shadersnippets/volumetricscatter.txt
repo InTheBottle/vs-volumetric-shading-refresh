@@ -6,7 +6,7 @@ float vsmodVolumetricPhase(float cosTheta) {
     float forward = clamp(cosTheta * 0.5 + 0.5, 0.0, 1.0);
     float mie = pow(forward, 4.0);
     float rayleigh = 0.28 + 0.10 * cosTheta * cosTheta;
-    return 1.15 + rayleigh + mie;
+    return 0.9 + rayleigh + mie * 0.65;
 }
 
 float calculateVolumetricScatter(vec3 position) {
@@ -34,7 +34,7 @@ float calculateVolumetricScatter(vec3 position) {
         progress += dV;
     }
 
-    float normalOut = clamp(scattered * 5.0, 0.0, 1.0);
+    float normalOut = clamp(scattered * 2.4, 0.0, 1.0);
     float intensity = dot(normalize(dV), normalize(shadowLightPos.xyz));
     float phase = vsmodVolumetricPhase(intensity);
     return min(0.9f, pow(phase * normalOut, VOLUMETRIC_FLATNESS));

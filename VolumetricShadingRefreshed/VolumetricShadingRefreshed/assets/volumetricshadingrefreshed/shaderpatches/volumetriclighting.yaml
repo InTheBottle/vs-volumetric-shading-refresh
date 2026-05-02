@@ -176,21 +176,14 @@
     float cloudPowder = 1.0 - exp(-4.0 * cloudDensity);
     float cloudSun = pow(clamp(dot(normalize(vertexPos + vec3(0.0, 100.0, 0.0)), normalize(sunPosition)) * 0.5 + 0.5, 0.0, 1.0), 3.0);
     float cloudTransmittance = exp(-1.35 * cloudDensity);
-    col.rgb *= 0.86 + 0.14 * cloudTransmittance;
-    col.rgb += skyGlow.rgb * cloudPowder * cloudSun * (0.06 + 0.16 * dayLight);
+    col.rgb *= 0.92 + 0.08 * cloudTransmittance;
+    col.rgb += skyGlow.rgb * cloudPowder * cloudSun * (0.03 + 0.08 * dayLight);
 
 - type: token
   filename: clouds.fsh
   tokens: outGlow = vec4(max(0, skyGlow.a/10 + baseBloom), 0
   content: |
-    float actOut = 0.0f;
-    #if GODRAYS > 0
-        float normalOut = 0.1f;
-        float intensity = dot(normalize(shadowCoordsFar.xyz-shadowRayStart.xyz), normalize(shadowLightPos.xyz-shadowRayStart.xyz));
-        float phase = vsmodVolumetricPhase(intensity);
-        actOut = pow(phase * normalOut, VOLUMETRIC_FLATNESS);
-    #endif
-    outGlow = vec4(max(0, skyGlow.a/10 + baseBloom), actOut
+    outGlow = vec4(max(0, skyGlow.a/10 + baseBloom), 0
 
 - type: start
   filename: clouds.vsh
@@ -282,13 +275,7 @@
 - type: token
   filename: sky.fsh
   tokens: outGlow.y *= clamp((dayLight - 0.05) * 2 - 50*murkiness, 0, 1);
-  content: |
-    #if GODRAYS > 0
-    float normalOut = 0.5f*dayLight;
-    float intensity = dot(normalize(shadowCoordsFar.xyz-shadowRayStart.xyz), normalize(shadowLightPos.xyz-shadowRayStart.xyz));
-    float phase = vsmodVolumetricPhase(intensity) + 0.75;
-    outGlow.y = pow(phase * normalOut, VOLUMETRIC_FLATNESS);
-    #endif
+  content: outGlow.y *= clamp((dayLight - 0.05) * 2 - 50*murkiness, 0, 1);
 
 - type: start
   filename: sky.vsh
