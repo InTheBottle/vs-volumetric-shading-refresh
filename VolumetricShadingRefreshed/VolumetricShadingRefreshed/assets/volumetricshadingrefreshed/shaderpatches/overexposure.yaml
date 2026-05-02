@@ -84,11 +84,6 @@
 #    float glow = 0.0;
 #    outColor = applyOverexposedFogAndShadow(texColor, fogAmount, normal, 1.0, intensity, vertexPosition, fogDensityIn, glow);
 
-- type: token
-  filename: entityanimated.fsh
-  tokens: float glow = 0;
-  content: ''
-
 # vertexPosition in entityanimated.vsh is injected in volumetriclighting.yaml...
 
 - type: start
