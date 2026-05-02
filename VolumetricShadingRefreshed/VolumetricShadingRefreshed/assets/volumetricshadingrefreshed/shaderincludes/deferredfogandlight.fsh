@@ -223,15 +223,34 @@ float volumetricRandom(uvec2 v) {
 
 float calculateVolumetricScatterDeferred(vec4 worldPos, vec4 cameraPos) {
     #if GODRAYS > 0
+    if (dayLight < 0.02) {
+        return 0.0f;
+    }
+
     vec4 shadowCoordsFar = toShadowMapSpaceMatrixFar * worldPos;
     vec4 shadowRayStart = toShadowMapSpaceMatrixFar * cameraPos;
     vec4 shadowLightPos = toShadowMapSpaceMatrixFar * vec4(lightPosition, 0.0);
 
     const int maxSamples = 4;
 
-    vec3 dV = (shadowCoordsFar.xyz - shadowRayStart.xyz) / maxSamples;
+    if (shadowCoordsFar.z >= 0.999 ||
+        shadowCoordsFar.x <= 0.02 || shadowCoordsFar.x >= 0.98 ||
+        shadowCoordsFar.y <= 0.02 || shadowCoordsFar.y >= 0.98) {
+        return 0.0f;
+    }
+
+    vec3 dV = (shadowCoordsFar.xyz - shadowRayStart.xyz) / float(maxSamples);
+    float rayStepLength = length(dV);
+    if (rayStepLength < 0.00001) {
+        return 0.0f;
+    }
+
     vec3 progress = shadowRayStart.xyz + dV * vsmodVolumetricDither(gl_FragCoord.xy);
     float viewDistance = length(worldPos.xyz - cameraPos.xyz);
+    if (viewDistance < 6.0) {
+        return 0.0f;
+    }
+
     float segmentDepth = clamp(viewDistance / 900.0 / float(maxSamples), 0.015, 0.22);
     float stepScatter = 1.0 - exp(-segmentDepth);
     float stepTransmittance = exp(-segmentDepth);
@@ -247,9 +266,9 @@ float calculateVolumetricScatterDeferred(vec4 worldPos, vec4 cameraPos) {
     }
 
     float normalOut = clamp(scattered * 2.4, 0.0, 1.0);
-    float intensity = dot(normalize(dV), normalize(shadowLightPos.xyz));
+    float intensity = dot(dV / rayStepLength, normalize(shadowLightPos.xyz));
     float phase = vsmodVolumetricPhase(intensity);
-    return min(0.9f, pow(phase * normalOut, VOLUMETRIC_FLATNESS));
+    return vsmodVolumetricResponse(normalOut, phase);
     #endif
     return 0.0f;
 }

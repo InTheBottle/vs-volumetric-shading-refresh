@@ -18,23 +18,21 @@ out vec4 outColor;
 #include printvalues.fsh
 
 vec4 applyVolumetricLighting(in vec3 color, in vec2 uv, float intensity) {
-    float vgr = texture(glowParts, uv).g;
-
-    // Apply Gaussian blur to smooth out the volumetric lighting
     vec2 texelSize = 1.0 / textureSize(glowParts, 0);
-    vec4 blurredVGR = vec4(0.0);
-    float blurRadius = 2.0;// Adjust the radius as needed
+    float vgr =
+        texture(glowParts, uv).g * 0.50 +
+        texture(glowParts, uv + vec2(texelSize.x, 0.0)).g * 0.125 +
+        texture(glowParts, uv - vec2(texelSize.x, 0.0)).g * 0.125 +
+        texture(glowParts, uv + vec2(0.0, texelSize.y)).g * 0.125 +
+        texture(glowParts, uv - vec2(0.0, texelSize.y)).g * 0.125;
 
-    for (float i = -blurRadius; i <= blurRadius; i++) {
-        for (float j = -blurRadius; j <= blurRadius; j++) {
-            vec2 offset = vec2(i, j) * texelSize;
-            blurredVGR += texture(glowParts, uv + offset);
-        }
+    vgr = max(vgr - 0.012, 0.0);
+    vgr = min(vgr * 1.25, 0.85);
+    if (vgr <= 0.0) {
+        return vec4(0.0, 0.0, 0.0, 1.0);
     }
 
-    blurredVGR /= pow((2.0 * blurRadius + 1.0), 2.0);
-
-    vec3 vgrC = color * 1.05 * VOLUMETRIC_INTENSITY * blurredVGR.g;
+    vec3 vgrC = color * intensity * vgr;
     return vec4(vgrC, 1.0);
 }
 

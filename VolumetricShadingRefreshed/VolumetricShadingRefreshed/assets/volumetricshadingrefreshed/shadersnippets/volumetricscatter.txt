@@ -9,6 +9,12 @@ float vsmodVolumetricPhase(float cosTheta) {
     return 0.9 + rayleigh + mie * 0.65;
 }
 
+float vsmodVolumetricResponse(float scattered, float phase) {
+    float shaped = clamp(scattered * phase * 0.58, 0.0, 1.0);
+    float flatness = clamp(VOLUMETRIC_FLATNESS / 120.0, 0.45, 2.0);
+    return min(0.55f, pow(shaped, flatness) * 0.72);
+}
+
 float calculateVolumetricScatter(vec3 position) {
     #if GODRAYS > 0
     if (sunlightLevel < 0.002) {
@@ -17,9 +23,24 @@ float calculateVolumetricScatter(vec3 position) {
 
     const int maxSamples = 4;
 
-    vec3 dV = (shadowCoordsFar.xyz - shadowRayStart.xyz) / maxSamples;
+    if (shadowCoordsFar.w <= 0.001 || shadowCoordsFar.z >= 0.999 ||
+        shadowCoordsFar.x <= 0.02 || shadowCoordsFar.x >= 0.98 ||
+        shadowCoordsFar.y <= 0.02 || shadowCoordsFar.y >= 0.98) {
+        return 0.0f;
+    }
+
+    vec3 dV = (shadowCoordsFar.xyz - shadowRayStart.xyz) / float(maxSamples);
+    float rayStepLength = length(dV);
+    if (rayStepLength < 0.00001) {
+        return 0.0f;
+    }
+
     vec3 progress = shadowRayStart.xyz + dV * vsmodVolumetricDither(gl_FragCoord.xy);
     float viewDistance = length(position);
+    if (viewDistance < 6.0) {
+        return 0.0f;
+    }
+
     float segmentDepth = clamp(viewDistance / 900.0 / float(maxSamples), 0.015, 0.22);
     float stepScatter = 1.0 - exp(-segmentDepth);
     float stepTransmittance = exp(-segmentDepth);
@@ -35,9 +56,9 @@ float calculateVolumetricScatter(vec3 position) {
     }
 
     float normalOut = clamp(scattered * 2.4, 0.0, 1.0);
-    float intensity = dot(normalize(dV), normalize(shadowLightPos.xyz));
+    float intensity = dot(dV / rayStepLength, normalize(shadowLightPos.xyz));
     float phase = vsmodVolumetricPhase(intensity);
-    return min(0.9f, pow(phase * normalOut, VOLUMETRIC_FLATNESS));
+    return vsmodVolumetricResponse(normalOut, phase);
     #endif
     return 0.0f;
 }

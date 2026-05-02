@@ -41,7 +41,7 @@
 - type: token
   filename: skycolor.fsh
   tokens: vec4(0, intensity - fogAmount/2, 0, 1);
-  content: vec4(intensity - fogAmount/2, intensity - fogAmount/2, 0, 1);
+  content: vec4(0, max(0.0, intensity - fogAmount/2) * 0.75, 0, 1);
 
 - type: token
   filename: celestialobject.fsh
@@ -52,7 +52,11 @@
   filename: chunkliquid.fsh
   tokens: OIT(texColor, glowLevel);
   content: |
+    #if VSMOD_DEFERREDLIGHTING == 0
     float scatterAmt = calculateVolumetricScatter(fWorldPos);
+    #else
+    float scatterAmt = 0.0;
+    #endif
     OIT(texColor, glowLevel);
     outGlow.y = scatterAmt;
 
@@ -145,7 +149,11 @@
   tokens: outReveal.r = color.a;
   content: |
     outReveal.r = color.a;
+    #if VSMOD_DEFERREDLIGHTING == 0
     float scatterAmt = calculateVolumetricScatter(worldPos.xyz);
+    #else
+    float scatterAmt = 0.0;
+    #endif
 
 - type: token
   filename: chunktransparent.fsh
