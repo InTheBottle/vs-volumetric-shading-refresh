@@ -207,7 +207,7 @@ public class DeferredLighting
         _platform.RenderFullscreenTriangle(_screenQuad);
         s.Stop();
         _platform.CheckGlError("Error while calculating deferred lighting");
-        GL.DrawBuffers(DrawBuffersDeferred.Length, DrawBuffersDeferred);
+        GL.DrawBuffers(DrawBuffersPrimary.Length, DrawBuffersPrimary);
         _platform.GlEnableDepthTest();
     }
 
