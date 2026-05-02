@@ -227,25 +227,28 @@ float calculateVolumetricScatterDeferred(vec4 worldPos, vec4 cameraPos) {
     vec4 shadowRayStart = toShadowMapSpaceMatrixFar * cameraPos;
     vec4 shadowLightPos = toShadowMapSpaceMatrixFar * vec4(lightPosition, 0.0);
 
-    float dither = fract(0.75487765 * gl_FragCoord.x + 0.56984026 * gl_FragCoord.y);
-
     const int maxSamples = 4;
 
-    vec3 dV = (shadowCoordsFar.xyz-shadowRayStart.xyz)/maxSamples;
-
-    vec3 progress = shadowRayStart.xyz + dV*dither;
-
-    float vL = 0.0f;
+    vec3 dV = (shadowCoordsFar.xyz - shadowRayStart.xyz) / maxSamples;
+    vec3 progress = shadowRayStart.xyz + dV * vsmodVolumetricDither(gl_FragCoord.xy);
+    float viewDistance = length(worldPos.xyz - cameraPos.xyz);
+    float segmentDepth = clamp(viewDistance / 900.0 / float(maxSamples), 0.015, 0.22);
+    float stepScatter = 1.0 - exp(-segmentDepth);
+    float stepTransmittance = exp(-segmentDepth);
+    float transmittance = 1.0;
+    float scattered = 0.0;
 
     for (int i = 0; i < maxSamples; ++i) {
-        vL += texture(shadowMapFar, vec3(progress.xy, progress.z - 0.0009));
+        float inLight = texture(shadowMapFar, vec3(progress.xy, progress.z - 0.0009));
+        scattered += inLight * stepScatter * transmittance;
+        transmittance *= stepTransmittance;
+        if (transmittance < 0.025) break;
         progress += dV;
     }
 
-    float normalOut = min(1, vL * length(worldPos) / 1000.0f / maxSamples);
+    float normalOut = clamp(scattered * 5.0, 0.0, 1.0);
     float intensity = dot(normalize(dV), normalize(shadowLightPos.xyz));
-    float forwardScatter = pow(clamp(intensity * 0.5 + 0.5, 0.0, 1.0), 4.0);
-    float phase = 1.35 + forwardScatter;
+    float phase = vsmodVolumetricPhase(intensity);
     return min(0.9f, pow(phase * normalOut, VOLUMETRIC_FLATNESS));
     #endif
     return 0.0f;

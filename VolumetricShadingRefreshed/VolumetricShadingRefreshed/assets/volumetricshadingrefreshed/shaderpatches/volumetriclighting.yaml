@@ -169,13 +169,25 @@
 
 - type: token
   filename: clouds.fsh
+  tokens: col.rgb *= max(1, 0.9 + skyGlow.a/10);
+  content: |
+    col.rgb *= max(1, 0.9 + skyGlow.a/10);
+    float cloudDensity = clamp(col.a, 0.0, 1.0);
+    float cloudPowder = 1.0 - exp(-4.0 * cloudDensity);
+    float cloudSun = pow(clamp(dot(normalize(vertexPos + vec3(0.0, 100.0, 0.0)), normalize(sunPosition)) * 0.5 + 0.5, 0.0, 1.0), 3.0);
+    float cloudTransmittance = exp(-1.35 * cloudDensity);
+    col.rgb *= 0.86 + 0.14 * cloudTransmittance;
+    col.rgb += skyGlow.rgb * cloudPowder * cloudSun * (0.06 + 0.16 * dayLight);
+
+- type: token
+  filename: clouds.fsh
   tokens: outGlow = vec4(max(0, skyGlow.a/10 + baseBloom), 0
   content: |
     float actOut = 0.0f;
     #if GODRAYS > 0
         float normalOut = 0.1f;
         float intensity = dot(normalize(shadowCoordsFar.xyz-shadowRayStart.xyz), normalize(shadowLightPos.xyz-shadowRayStart.xyz));
-        float phase = 1.35 + pow(clamp(intensity * 0.5 + 0.5, 0.0, 1.0), 4.0);
+        float phase = vsmodVolumetricPhase(intensity);
         actOut = pow(phase * normalOut, VOLUMETRIC_FLATNESS);
     #endif
     outGlow = vec4(max(0, skyGlow.a/10 + baseBloom), actOut
@@ -244,13 +256,37 @@
   snippet: volumetricfinal.txt
 
 - type: token
+  filename: final.fsh
+  tokens: "#include noise3d.ash"
+  content: |
+    #include noise3d.ash
+
+    float vsmodFinalDither(vec2 p) {
+        vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+        p3 += dot(p3, p3.yzx + 33.33);
+        return fract((p3.x + p3.y) * p3.z);
+    }
+
+    float vsmodFinalTriangularDither(vec2 p) {
+        return vsmodFinalDither(p) + vsmodFinalDither(p + 17.0) - 1.0;
+    }
+
+- type: regex
+  filename: final.fsh
+  regex: 'outColor\.a\s*=\s*1\s*;\s*\}'
+  content: |
+    outColor.rgb = clamp(outColor.rgb + vsmodFinalTriangularDither(gl_FragCoord.xy + windWaveCounter) * (1.0 / 255.0), 0.0, 1.0);
+    outColor.a=1;
+    }
+
+- type: token
   filename: sky.fsh
   tokens: outGlow.y *= clamp((dayLight - 0.05) * 2 - 50*murkiness, 0, 1);
   content: |
     #if GODRAYS > 0
     float normalOut = 0.5f*dayLight;
     float intensity = dot(normalize(shadowCoordsFar.xyz-shadowRayStart.xyz), normalize(shadowLightPos.xyz-shadowRayStart.xyz));
-    float phase = 2.5+exp(intensity*3.0)/3.0;
+    float phase = vsmodVolumetricPhase(intensity) + 0.75;
     outGlow.y = pow(phase * normalOut, VOLUMETRIC_FLATNESS);
     #endif
 
